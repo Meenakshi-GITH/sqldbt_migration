@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: traders_raw
+    database: TRADERS_DB
+    schema: RAW
+
+    tables:
+      - name: load_customers_traders_north
+      - name: load_customers_traders_south
