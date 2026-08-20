@@ -10,3 +10,5 @@ sources:
       - name: load_customers_traders_south
       - name: load_products_traders_north
       - name: load_products_traders_south
+      - name: load_employees_traders_north
+      - name: load_employees_traders_south
