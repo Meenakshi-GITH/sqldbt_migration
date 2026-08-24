@@ -1,73 +1,81 @@
+
 {{ config(
-    materialized='incremental'
+    materialized='incremental',
+    incremental_strategy='append',
+    unique_key='hk_h_employee'
 ) }}
 
-SELECT DISTINCT
+WITH stage AS (
 
-    h_employee.hk_h_employee AS hk_h_employee,
+    SELECT
+        hk_h_employee,
+        extension,
+        dss_change_hash_employee_hroc_traders_south AS dss_change_hash,
+        dss_record_source,
+        dss_load_date
+    FROM {{ ref('stg_employee_traders_south') }}
 
-    stage_employee_traders_south.extension AS extension,
+),
 
-    stage_employee_traders_south.dss_change_hash_employee_hroc_traders_south
-        AS dss_change_hash,
-
-    stage_employee_traders_south.dss_record_source
-        AS dss_record_source,
-
-    stage_employee_traders_south.dss_load_date
-        AS dss_load_date,
-
-    CURRENT_TIMESTAMP() AS dss_start_date,
+current_rows AS (
 
     {% if is_incremental() %}
-        COALESCE(current_rows.dss_version, 0) + 1
-    {% else %}
-        1
-    {% endif %} AS dss_version,
-
-    CURRENT_TIMESTAMP() AS dss_create_time
-
-FROM {{ ref('h_employee') }} AS h_employee
-
-INNER JOIN {{ ref('stg_employee_traders_south') }}
-    AS stage_employee_traders_south
-
-    ON h_employee.hk_h_employee =
-       stage_employee_traders_south.hk_h_employee
-
-{% if is_incremental() %}
-
-LEFT JOIN (
 
     SELECT
         hk_h_employee,
         MAX(dss_start_date) AS dss_start_date,
         MAX(dss_version) AS dss_version
-
     FROM {{ this }}
-
     GROUP BY hk_h_employee
 
-) AS current_rows
+    {% else %}
 
-    ON stage_employee_traders_south.hk_h_employee =
-       current_rows.hk_h_employee
+    SELECT
+        CAST(NULL AS VARCHAR) AS hk_h_employee,
+        CAST(NULL AS TIMESTAMP) AS dss_start_date,
+        CAST(NULL AS INTEGER) AS dss_version
+    WHERE 1 = 0
 
-WHERE NOT EXISTS (
+    {% endif %}
 
-    SELECT 1
+),
 
-    FROM {{ this }} AS s_employee_hroc_traders_south
+final AS (
 
-    WHERE stage_employee_traders_south.hk_h_employee =
-          s_employee_hroc_traders_south.hk_h_employee
+    SELECT DISTINCT
+        s.hk_h_employee,
+        s.extension,
+        s.dss_change_hash,
+        s.dss_record_source,
+        s.dss_load_date,
 
-      AND stage_employee_traders_south.dss_change_hash_employee_hroc_traders_south =
-          s_employee_hroc_traders_south.dss_change_hash
+        CURRENT_TIMESTAMP() AS dss_start_date,
 
-      AND current_rows.dss_start_date =
-          s_employee_hroc_traders_south.dss_start_date
+        COALESCE(c.dss_version, 0) + 1 AS dss_version,
+
+        CURRENT_TIMESTAMP() AS dss_create_time
+
+    FROM stage s
+
+    LEFT JOIN current_rows c
+        ON s.hk_h_employee = c.hk_h_employee
+
+    {% if is_incremental() %}
+
+    WHERE NOT EXISTS (
+
+        SELECT 1
+        FROM {{ this }} t
+
+        WHERE s.hk_h_employee = t.hk_h_employee
+          AND s.dss_change_hash = t.dss_change_hash
+          AND c.dss_start_date = t.dss_start_date
+
+    )
+
+    {% endif %}
 
 )
 
-{% endif %}
+SELECT *
+FROM final
