@@ -1,7 +1,3 @@
-{{ config(
-    materialized='view'
-) }}
-
 SELECT
     MD5(
         COALESCE(CAST(COMPANYNAME AS VARCHAR), 'null')

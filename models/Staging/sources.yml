@@ -12,3 +12,14 @@ sources:
       - name: load_products_traders_south
       - name: load_employees_traders_north
       - name: load_employees_traders_south
+      - name: load_orders_traders_north
+      - name: load_orders_traders_south
+      - name: load_employeeterritories_traders_north
+      - name: load_employeeterritories_traders_south
+      - name: load_suppliers_traders_north
+      - name: load_categories_traders_north
+      - name: load_suppliers_traders_south
+      - name: load_categories_traders_south
+      - name: load_customer_sales2
+      - name: load_customer_ssis
+      - name: load_customer_xml
